@@ -1,3 +1,7 @@
+# Build directory
+build/
+cmake-build-*/
+
 # Prerequisites
 *.d
 
@@ -39,3 +43,24 @@
 
 # debug information files
 *.dwo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Models (can be large)
+models/*.onnx
+models/*.tflite
+models/*.rknn
+
+# Data files
+data/*.wav
+data/*.mp3
+data/*.flac
+models/*.bin
+transcripts.txt
+
+# Python venv
+.venv/
