@@ -70,6 +70,10 @@ target_include_directories(wake_word_lib PUBLIC
 add_executable(wake_word src/main.cpp)
 target_link_libraries(wake_word PRIVATE wake_word_lib)
 
+# Microphone / wake word diagnostic
+add_executable(mic_check src/tools/mic_check.cpp)
+target_link_libraries(mic_check PRIVATE wake_word_lib)
+
 # Tests
 if(ENABLE_TESTS)
     enable_testing()
