@@ -175,12 +175,18 @@ void WakeWordDetector::detection_loop() {
 
     // Check if we have enough samples
     AudioBuffer chunk;
+    bool ready = false;
     {
         std::lock_guard lock(buffer_mutex_);
-        if (buffer_pos_ < kChunkSamples) {
-            std::this_thread::sleep_for(10ms);
-            return;
-        }
+        ready = buffer_pos_ >= kChunkSamples;
+    }
+    if (!ready) {
+        // Sleep without the lock, or the audio callback starves on it
+        std::this_thread::sleep_for(10ms);
+        return;
+    }
+    {
+        std::lock_guard lock(buffer_mutex_);
 
         // Extract chunk
         chunk.assign(audio_buffer_.begin(), audio_buffer_.begin() + kChunkSamples);

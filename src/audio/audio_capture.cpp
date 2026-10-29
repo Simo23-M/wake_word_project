@@ -6,6 +6,7 @@
 #include "audio_capture.hpp"
 
 #include <portaudio.h>
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -45,7 +46,7 @@ namespace {
 
 AudioCapture::AudioCapture(const AudioConfig& config)
     : config_(config)
-    , ring_buffer_(config.samples_per_frame() * 10) // Buffer 10 frames
+    , filtered_(config.samples_per_frame())
 {
     (void)pa_init; // Trigger PortAudio initialization
 }
@@ -59,8 +60,9 @@ AudioCapture::AudioCapture(AudioCapture&& other) noexcept
     , stream_(std::exchange(other.stream_, nullptr))
     , callback_(std::move(other.callback_))
     , running_(other.running_.load())
-    , ring_buffer_(std::move(other.ring_buffer_))
-    , write_pos_(other.write_pos_)
+    , filtered_(std::move(other.filtered_))
+    , dc_prev_in_(other.dc_prev_in_)
+    , dc_prev_out_(other.dc_prev_out_)
 {
     other.running_.store(false);
 }
@@ -72,8 +74,9 @@ AudioCapture& AudioCapture::operator=(AudioCapture&& other) noexcept {
         stream_ = std::exchange(other.stream_, nullptr);
         callback_ = std::move(other.callback_);
         running_.store(other.running_.load());
-        ring_buffer_ = std::move(other.ring_buffer_);
-        write_pos_ = other.write_pos_;
+        filtered_ = std::move(other.filtered_);
+        dc_prev_in_ = other.dc_prev_in_;
+        dc_prev_out_ = other.dc_prev_out_;
         other.running_.store(false);
     }
     return *this;
@@ -100,6 +103,9 @@ Result<void> AudioCapture::start() {
     input_params.suggestedLatency = Pa_GetDeviceInfo(input_params.device)->defaultLowInputLatency;
     input_params.hostApiSpecificStreamInfo = nullptr;
 
+    // Reset the DC filter before the callback can run (initial transient ~12 ms)
+    dc_prev_in_ = dc_prev_out_ = 0.0f;
+
     // Open the audio stream
     PaError err = Pa_OpenStream(
         &stream_,
@@ -119,9 +125,12 @@ Result<void> AudioCapture::start() {
         ));
     }
 
-    // Start streaming
+    // Start streaming. running_ must be set first: the callback returns
+    // paComplete (ending the stream for good) if it sees running_ == false.
+    running_.store(true);
     err = Pa_StartStream(stream_);
     if (err != paNoError) {
+        running_.store(false);
         Pa_CloseStream(stream_);
         stream_ = nullptr;
         return std::unexpected(Error::make(
@@ -130,7 +139,6 @@ Result<void> AudioCapture::start() {
         ));
     }
 
-    running_.store(true);
     return {};
 }
 
@@ -189,13 +197,31 @@ int AudioCapture::pa_callback(
         return paComplete;
     }
 
-    // Forward audio data to user callback
+    // Forward DC-filtered audio data to user callback
     if (capture->callback_ && input) {
         auto* samples = static_cast<const AudioSample*>(input);
-        capture->callback_(AudioSpan{samples, frame_count});
+        if (capture->filtered_.size() < frame_count) {
+            capture->filtered_.resize(frame_count); // Only if PortAudio changes buffer size
+        }
+        std::span<AudioSample> out{capture->filtered_.data(), frame_count};
+        std::copy_n(samples, frame_count, out.begin());
+        capture->remove_dc(out);
+        capture->callback_(AudioSpan{out});
     }
 
     return paContinue;
+}
+
+void AudioCapture::remove_dc(std::span<AudioSample> samples) noexcept {
+    // y[n] = x[n] - x[n-1] + R * y[n-1]; R = 0.996 → cutoff ≈ 10 Hz @ 16 kHz
+    constexpr float kR = 0.996f;
+    for (auto& s : samples) {
+        const float x = s;
+        const float y = x - dc_prev_in_ + kR * dc_prev_out_;
+        dc_prev_in_ = x;
+        dc_prev_out_ = y;
+        s = static_cast<AudioSample>(std::clamp(y, -32768.0f, 32767.0f));
+    }
 }
 
 } // namespace wake_word

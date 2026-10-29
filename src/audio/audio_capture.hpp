@@ -14,6 +14,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <span>
 #include <thread>
 
 struct PaStreamCallbackTimeInfo;
@@ -122,12 +123,21 @@ private:
         void* user_data
     );
 
+    /**
+     * @brief Remove the DC offset in place (one-pole high-pass, ~10 Hz).
+     *
+     * Some codecs (e.g. ALC269 internal mics) add an offset of thousands
+     * of LSB that grows with gain; the models expect a zero-mean signal.
+     */
+    void remove_dc(std::span<AudioSample> samples) noexcept;
+
     AudioConfig config_;              ///< Audio configuration
     PaStream* stream_ = nullptr;      ///< PortAudio stream handle
     FrameCallback callback_;          ///< User callback for frames
     std::atomic<bool> running_{false};///< Capture state flag
-    AudioBuffer ring_buffer_;         ///< Internal circular buffer
-    std::size_t write_pos_ = 0;       ///< Ring buffer write position
+    AudioBuffer filtered_;            ///< Scratch buffer for DC-filtered frames
+    float dc_prev_in_ = 0.0f;         ///< High-pass state: previous input
+    float dc_prev_out_ = 0.0f;        ///< High-pass state: previous output
 };
 
 } // namespace wake_word
