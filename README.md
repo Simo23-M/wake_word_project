@@ -26,24 +26,31 @@ Optimized for edge devices with limited computational resources, using quantized
 
 ## Build
 
+All commands are run from the project root.
+
 ```bash
-# Install dependencies (Ubuntu/Debian)
+# Install system dependencies (apt, dnf or pacman)
 ./scripts/install_deps.sh
 
-# Build
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+# Download models (once)
+./scripts/download_oww_models.sh                # melspectrogram, embedding, alexa_v0.1
+./scripts/download_whisper_model.sh tiny        # or base/small: slower, more accurate
+
+# Build (first run also downloads ONNX Runtime, whisper.cpp and Catch2)
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2                         # keep -j low on machines with < 8 GB RAM
 
 # Run tests
-./tests/wake_word_tests
-
-# Download speech-to-text model (once)
-./scripts/download_whisper_model.sh base
+./build/tests/wake_word_tests
 
 # Run: say the wake word, then the command. Text is appended to transcripts.txt
-./build/wake_word [wakeword.onnx] [threshold] [ggml-whisper.bin]
+./build/wake_word models/alexa_v0.1.onnx 0.5 models/ggml-tiny.bin
 ```
+
+Arguments: `[wakeword.onnx] [threshold] [ggml-whisper.bin]`, defaults
+`models/alexa_v0.1.onnx 0.5 models/ggml-base.bin`. `melspectrogram.onnx` and
+`embedding_model.onnx` must sit in the same directory as the wake word model.
+Other pretrained wake words: `./scripts/download_oww_models.sh hey_jarvis_v0.1`.
 
 ## Requirements
 
