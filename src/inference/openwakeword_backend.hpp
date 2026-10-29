@@ -107,12 +107,14 @@ public:
      * @param audio Raw audio samples (should be chunk_samples length).
      * @return Confidence score [0.0 - 1.0] or error.
      *
-     * Performs: audio → melspec → embedding → buffer → classification
+     * Performs: audio → melspec (streaming) → embedding of the last 76 mel
+     * frames → embedding history → classification. Returns 0 for ~2 s after
+     * a reset, until mel and embedding history hold only real audio.
      */
     [[nodiscard]] Result<float> infer_audio(AudioSpan audio);
 
     /**
-     * @brief Reset the embedding history buffer.
+     * @brief Reset audio, mel and embedding history.
      *
      * Call after detection to start fresh for next wake word.
      */
@@ -137,19 +139,26 @@ public:
     [[nodiscard]] const OpenWakeWordConfig& get_config() const noexcept;
 
 private:
-    /**
-     * @brief Run melspectrogram model.
-     * @param audio Raw audio samples.
-     * @return Mel features or error.
-     */
-    [[nodiscard]] Result<std::vector<float>> run_melspectrogram(AudioSpan audio);
+    /// Mel bins produced by melspectrogram.onnx
+    static constexpr std::size_t kMelBins = 32;
+    /// Mel frames consumed by one embedding (~775 ms)
+    static constexpr std::size_t kEmbeddingWindow = 76;
+    /// Samples of the previous chunk prepended to each new one (3 hops of 160)
+    static constexpr std::size_t kMelOverlapSamples = 480;
+    using MelFrame = std::array<float, kMelBins>;
 
     /**
-     * @brief Run embedding model.
-     * @param mel_features Melspectrogram features.
+     * @brief Run melspectrogram model on the overlap + new audio.
+     * @param audio New raw audio samples.
+     * @return Success or error. New frames are appended to the mel buffer.
+     */
+    [[nodiscard]] Result<void> run_melspectrogram(AudioSpan audio);
+
+    /**
+     * @brief Run embedding model on the last kEmbeddingWindow mel frames.
      * @return Embedding vector or error.
      */
-    [[nodiscard]] Result<std::vector<float>> run_embedding(const std::vector<float>& mel_features);
+    [[nodiscard]] Result<std::vector<float>> run_embedding();
 
     /**
      * @brief Run wake word classification.
@@ -165,9 +174,16 @@ private:
 
     OpenWakeWordConfig config_;
 
+    /// Last kMelOverlapSamples of audio, so mel frames stay continuous across chunks
+    AudioBuffer audio_tail_;
+
+    /// Most recent mel frames (at least kEmbeddingWindow)
+    std::deque<MelFrame> mel_buffer_;
+
     /// Circular buffer of recent embeddings
     std::deque<std::vector<float>> embedding_buffer_;
 
+    std::size_t predictions_since_reset_ = 0;
     bool models_loaded_ = false;
 };
 
