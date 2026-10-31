@@ -69,20 +69,16 @@ Voice-activated assistants, smart home devices, IoT applications, and any embedd
   ├── cmake/                                                                     
   │   └── dependencies.cmake      # Dependancy Auto-download                   
   ├── include/wake_word/                                                         
-  │   ├── config.hpp              # Configuration audio/MFCC/detector           
+  │   ├── config.hpp              # Audio configuration           
   │   └── types.hpp               # Base type (Result, Error, Detection)         
   ├── src/                                                                       
   │   ├── main.cpp                # Entry point                                  
   │   ├── audio/                                                                 
   │   │   ├── audio_capture.hpp   # Real-time Audio capture                      
   │   │   └── audio_capture.cpp                                                  
-  │   ├── features/                                                              
-  │   │   ├── mfcc_extractor.hpp  # MFCC extraction feature                      
-  │   │   └── mfcc_extractor.cpp                                                 
   │   ├── inference/                                                             
-  │   │   ├── inference_backend.hpp   # Abstract interface shoul allow multi hw NPU     
-  │   │   ├── cpu_backend.hpp         # Backend CPU (ONNX Runtime)               
-  │   │   └── cpu_backend.cpp                                                    
+  │   │   ├── openwakeword_backend.hpp  # melspec → embedding → classifier (ONNX Runtime)
+  │   │   └── openwakeword_backend.cpp
   │   └── detector/                                                              
   │       ├── wake_word_detector.hpp  # Orchestratore principale                 
   │       └── wake_word_detector.cpp                                             

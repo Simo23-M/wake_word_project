@@ -62,10 +62,6 @@ using AudioSample = std::int16_t;              ///< Single 16-bit PCM audio samp
 using AudioBuffer = std::vector<AudioSample>;  ///< Owning audio sample container
 using AudioSpan = std::span<const AudioSample>;///< Non-owning view into audio data
 
-// Feature type aliases
-using FeatureVector = std::vector<float>;      ///< Single frame's MFCC coefficients
-using FeatureMatrix = std::vector<FeatureVector>; ///< Multiple frames (time x features)
-
 /**
  * @brief Result of wake word detection for a single analysis window.
  */
@@ -82,12 +78,5 @@ struct Detection {
         return is_detected;
     }
 };
-
-/**
- * @brief C-style callback function pointer for detection events.
- * @param detection The detection result.
- * @param user_data User-provided context pointer.
- */
-using DetectionCallback = void(*)(const Detection&, void* user_data);
 
 } // namespace wake_word

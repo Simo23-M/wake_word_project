@@ -8,9 +8,10 @@
 
 #pragma once
 
-#include "inference_backend.hpp"
+#include "wake_word/types.hpp"
 
 #include <array>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <string>
@@ -57,7 +58,7 @@ struct OpenWakeWordConfig {
  * The embedding buffer maintains temporal context required for
  * accurate wake word detection across multiple audio frames.
  */
-class OpenWakeWordBackend : public InferenceBackend {
+class OpenWakeWordBackend {
 public:
     /**
      * @brief Construct OpenWakeWord backend with given configuration.
@@ -68,21 +69,12 @@ public:
     /**
      * @brief Destructor. Releases all ONNX Runtime resources.
      */
-    ~OpenWakeWordBackend() override;
+    ~OpenWakeWordBackend();
 
     OpenWakeWordBackend(const OpenWakeWordBackend&) = delete;
     OpenWakeWordBackend& operator=(const OpenWakeWordBackend&) = delete;
     OpenWakeWordBackend(OpenWakeWordBackend&&) noexcept;
     OpenWakeWordBackend& operator=(OpenWakeWordBackend&&) noexcept;
-
-    /**
-     * @brief Load the wake word model (part of 3-model pipeline).
-     * @param model_path Path to wake word .onnx file.
-     * @return Success or error.
-     *
-     * @note For full pipeline, use load_models() instead.
-     */
-    [[nodiscard]] Result<void> load_model(std::string_view model_path) override;
 
     /**
      * @brief Load all three models in the pipeline.
@@ -92,15 +84,6 @@ public:
      * Paths are taken from the configuration.
      */
     [[nodiscard]] Result<void> load_models();
-
-    /**
-     * @brief Run inference on MFCC features (legacy interface).
-     * @param features Feature matrix (ignored, use infer_audio instead).
-     * @return Empty result - use infer_audio for OpenWakeWord.
-     *
-     * @deprecated Use infer_audio() for OpenWakeWord pipeline.
-     */
-    [[nodiscard]] Result<FeatureVector> infer(const FeatureMatrix& features) override;
 
     /**
      * @brief Run full inference pipeline on raw audio.
@@ -121,22 +104,10 @@ public:
     void reset_buffer();
 
     /**
-     * @brief Get backend identifier.
-     * @return "OpenWakeWord (ONNX Runtime)"
-     */
-    [[nodiscard]] std::string_view backend_name() const noexcept override;
-
-    /**
      * @brief Check if all models are loaded.
      * @return True if ready for inference.
      */
-    [[nodiscard]] bool is_loaded() const noexcept override;
-
-    /**
-     * @brief Get configuration.
-     * @return Reference to current configuration.
-     */
-    [[nodiscard]] const OpenWakeWordConfig& get_config() const noexcept;
+    [[nodiscard]] bool is_loaded() const noexcept;
 
 private:
     /// Mel bins produced by melspectrogram.onnx

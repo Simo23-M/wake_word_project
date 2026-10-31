@@ -13,7 +13,6 @@ FetchContent_MakeAvailable(Catch2)
 # Test executable
 add_executable(wake_word_tests
     test_main.cpp
-    test_mfcc.cpp
     test_audio.cpp
     test_recorder.cpp
 )

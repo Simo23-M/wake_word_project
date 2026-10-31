@@ -42,8 +42,6 @@ include_directories(
 # Source files
 set(WAKE_WORD_SOURCES
     src/audio/audio_capture.cpp
-    src/features/mfcc_extractor.cpp
-    src/inference/cpu_backend.cpp
     src/inference/openwakeword_backend.cpp
     src/detector/wake_word_detector.cpp
     src/stt/transcriber.cpp

@@ -122,13 +122,6 @@ public:
      */
     [[nodiscard]] float get_threshold() const noexcept;
 
-    /**
-     * @brief Process a single audio chunk (for file-based testing).
-     * @param audio Audio samples (should be 1280 samples).
-     * @return Detection result.
-     */
-    [[nodiscard]] Result<Detection> process_chunk(AudioSpan audio);
-
 private:
     /**
      * @brief Audio callback - buffers incoming samples.

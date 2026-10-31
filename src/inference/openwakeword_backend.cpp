@@ -117,11 +117,6 @@ namespace {
     }
 }
 
-Result<void> OpenWakeWordBackend::load_model(std::string_view model_path) {
-    config_.wakeword_model_path = std::string(model_path);
-    return load_models();
-}
-
 Result<void> OpenWakeWordBackend::load_models() {
     // Load melspectrogram model
     if (auto result = load_session(
@@ -186,14 +181,6 @@ Result<void> OpenWakeWordBackend::load_models() {
 
     models_loaded_ = true;
     return {};
-}
-
-Result<FeatureVector> OpenWakeWordBackend::infer(const FeatureMatrix& /*features*/) {
-    // Legacy interface - not used for OpenWakeWord
-    return std::unexpected(Error::make(
-        ErrorCode::InferenceError,
-        "Use infer_audio() for OpenWakeWord pipeline"
-    ));
 }
 
 Result<float> OpenWakeWordBackend::infer_audio(AudioSpan audio) {
@@ -411,16 +398,8 @@ void OpenWakeWordBackend::reset_buffer() {
     predictions_since_reset_ = 0;
 }
 
-std::string_view OpenWakeWordBackend::backend_name() const noexcept {
-    return "OpenWakeWord (ONNX Runtime)";
-}
-
 bool OpenWakeWordBackend::is_loaded() const noexcept {
     return models_loaded_;
-}
-
-const OpenWakeWordConfig& OpenWakeWordBackend::get_config() const noexcept {
-    return config_;
 }
 
 std::unique_ptr<OpenWakeWordBackend> create_openwakeword_backend(

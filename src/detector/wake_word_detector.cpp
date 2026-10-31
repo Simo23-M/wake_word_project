@@ -133,32 +133,6 @@ float WakeWordDetector::get_threshold() const noexcept {
     return threshold_.load();
 }
 
-Result<Detection> WakeWordDetector::process_chunk(AudioSpan audio) {
-    Detection result{};
-    result.timestamp_ms = static_cast<std::uint64_t>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count()
-    );
-
-    if (!backend_ || !backend_->is_loaded()) {
-        return std::unexpected(Error::make(
-            ErrorCode::InferenceError,
-            "Backend not initialized"
-        ));
-    }
-
-    auto confidence_result = backend_->infer_audio(audio);
-    if (!confidence_result) {
-        return std::unexpected(confidence_result.error());
-    }
-
-    result.confidence = confidence_result.value();
-    result.is_detected = result.confidence >= threshold_.load();
-
-    return result;
-}
-
 void WakeWordDetector::on_audio(AudioSpan audio) {
     std::lock_guard lock(buffer_mutex_);
 
